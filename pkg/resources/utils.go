@@ -40,6 +40,7 @@ const productName = "IBM Cloud Platform Common Services"
 const productVersion = "3.5.0.0"
 const productID = "AuditLogging_3.5.0.0_Apache_00000"
 const ServiceAcct = "-auditlogging-svcacct"
+const caIssuerName = "audit-ca-issuer"
 
 var log = logf.Log.WithName("controller_auditlogging")
 var seconds30 int64 = 30
@@ -257,6 +258,27 @@ func BuildDeploymentForPolicyController(instance *operatorv1alpha1.AuditLogging)
 	return deploy
 }
 
+// BuildCertIssuerForAuditLogging returns an Issuer object
+func BuildCertIssuerForAuditLogging(instance *operatorv1alpha1.AuditLogging) *certmgr.Issuer {
+	ls := LabelsForFluentd(instance.Name)
+
+	issuer := &certmgr.Issuer{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      caIssuerName,
+			Labels:    ls,
+			Namespace: instance.Spec.InstanceNamespace,
+		},
+		Spec: certmgr.IssuerSpec{
+			IssuerConfig: certmgr.IssuerConfig{
+				CA: &certmgr.CAIssuer{
+					SecretName: "common-services-ca-secret",
+				},
+			},
+		},
+	}
+	return issuer
+}
+
 // BuildCertsForAuditLogging returns a Certificate object
 func BuildCertsForAuditLogging(instance *operatorv1alpha1.AuditLogging) *certmgr.Certificate {
 	ls := LabelsForFluentd(instance.Name)
@@ -273,7 +295,7 @@ func BuildCertsForAuditLogging(instance *operatorv1alpha1.AuditLogging) *certmgr
 			CommonName: AuditLoggingCertName,
 			SecretName: auditLoggingCertSecretName,
 			IssuerRef: certmgr.ObjectReference{
-				Name: "cs-ca-issuer",
+				Name: caIssuerName,
 				Kind: certmgr.ClusterIssuerKind,
 			},
 		},

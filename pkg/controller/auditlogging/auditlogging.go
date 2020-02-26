@@ -342,6 +342,34 @@ func (r *ReconcileAuditLogging) createOrUpdateFluentdDaemonSet(instance *operato
 
 func (r *ReconcileAuditLogging) createOrUpdateAuditCerts(instance *operatorv1alpha1.AuditLogging) (reconcile.Result, error) {
 	reqLogger := log.WithValues("instance.Spec.InstanceNamespace", instance.Spec.InstanceNamespace, "Instance.Name", instance.Name)
+	certIssuerFound := &certmgr.Issuer{}
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: res.AuditLoggingCertName, Namespace: instance.Spec.InstanceNamespace}, certIssuerFound)
+	if err != nil && errors.IsNotFound(err) {
+		// Define a new Issuer
+		newCertIssuer := res.BuildCertIssuerForAuditLogging(instance)
+		// Set Audit Logging instance as the owner and controller of the Issuer
+		err := controllerutil.SetControllerReference(instance, newCertIssuer, r.scheme)
+		if err != nil && errors.IsAlreadyExists(err) {
+			// Already exists from previous reconcile, requeue.
+			return reconcile.Result{Requeue: true}, nil
+		} else if err != nil {
+			reqLogger.Error(err, "Failed to set owner for Issuer")
+			return reconcile.Result{}, err
+		}
+		reqLogger.Info("Creating a new Fluentd Certificate Issuer", "Issuer.Namespace", newCertIssuer.Namespace, "Issuer.Name", newCertIssuer.Name)
+		err = r.client.Create(context.TODO(), newCertIssuer)
+		if err != nil {
+			reqLogger.Error(err, "Failed to create new Fluentd Certificate Issuer", "Issuer.Namespace", newCertIssuer.Namespace,
+				"Issuer.Name", newCertIssuer.Name)
+			return reconcile.Result{}, err
+		}
+		// Issuer created successfully - return and requeue
+		return reconcile.Result{Requeue: true}, nil
+	} else if err != nil {
+		reqLogger.Error(err, "Failed to get Certificate Issuer")
+		return reconcile.Result{}, err
+	}
+
 	certificateFound := &certmgr.Certificate{}
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: res.AuditLoggingCertName, Namespace: instance.Spec.InstanceNamespace}, certificateFound)
 	if err != nil && errors.IsNotFound(err) {

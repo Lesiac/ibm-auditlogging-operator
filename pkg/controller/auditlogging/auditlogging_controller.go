@@ -75,6 +75,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		&appsv1.DaemonSet{},
 		&appsv1.Deployment{},
 		&corev1.ConfigMap{},
+		&certmgr.Issuer{},
 		&certmgr.Certificate{},
 		&corev1.ServiceAccount{},
 		&rbacv1.ClusterRole{},
