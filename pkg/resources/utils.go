@@ -273,7 +273,7 @@ func BuildCertsForAuditLogging(instance *operatorv1alpha1.AuditLogging) *certmgr
 			CommonName: AuditLoggingCertName,
 			SecretName: auditLoggingCertSecretName,
 			IssuerRef: certmgr.ObjectReference{
-				Name: "icp-ca-issuer",
+				Name: "cs-ca-issuer",
 				Kind: certmgr.ClusterIssuerKind,
 			},
 		},
